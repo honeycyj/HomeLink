@@ -1,0 +1,5 @@
+// Shared, portable defaults. Fixed local signing is supplied by Local.xcconfig.
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+// HomeLink supports Apple Silicon Macs only, in both development and release builds.
+ARCHS = arm64

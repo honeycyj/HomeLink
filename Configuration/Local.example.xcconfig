@@ -1,0 +1,4 @@
+// Copy to Local.xcconfig and use an identity from your own login keychain.
+// Keep the same identity across local builds to retain Keychain access.
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = YOUR_CODE_SIGNING_CERTIFICATE_SHA1

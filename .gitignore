@@ -1,0 +1,21 @@
+.build/
+Distribution/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+*.xcarchive/
+*.dmg
+*.zip
+*.log
+
+Configuration/Local.xcconfig
+.codex/signing-identity
+
+# Signing keys and credentials stay on the developer's Mac.
+*.p12
+*.pfx
+*.p8
+*.key
+.env
+.env.*
+!.env.example

@@ -1,0 +1,3 @@
+#include "Base.xcconfig"
+// Local builds retain Keychain identity. Distribution can override this in a private signing config.
+#include? "Local.xcconfig"
