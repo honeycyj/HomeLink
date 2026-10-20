@@ -1,6 +1,6 @@
 # HomeLink
 
-面向 Apple Silicon Mac 的 macOS 27 菜单栏远程连接工具，使用 SwiftUI 原生场景、Settings 和 Liquid Glass。
+面向 Apple Silicon Mac 的 macOS 26 及更新系统的菜单栏远程连接工具，使用 SwiftUI 原生场景、Settings 和 Liquid Glass。
 
 仅在客户端 Mac 安装 HomeLink。远程 Mac 使用系统自带的远程登录和屏幕共享，首次手动授权公钥，之后通过菜单栏连接。支持保存多台设备，同时连接一台。
 
@@ -10,7 +10,7 @@
 
 ## 环境要求
 
-- 使用：Apple Silicon（M 系列）Mac，macOS 27 或更新版本。
+- 使用：Apple Silicon（M 系列）Mac，macOS 26 或更新版本。
 - 开发与打包：Xcode 27.1 或更新版本；不依赖第三方 Swift 包。
 - 远程 Mac：开启“远程登录”和“屏幕共享”，允许目标用户访问，并授权客户端公钥。
 
@@ -34,7 +34,7 @@
 
 双击工程根目录的 **`打包安装包.command`**，完成后 Finder 会选中最新 DMG，可直接复制给别人。也可执行 `./script/package.sh --reveal`。需要这台打包电脑已经安装 Xcode；使用软件的其他 Mac 无需安装 Xcode。
 
-脚本生成 Release Apple Silicon（arm64）测试包，位于 `Distribution/`，包含 DMG、ZIP、安装说明和 SHA-256 校验文件。开发与打包均只支持 arm64，不包含 Intel 版本。打包不停止正在运行的开发版。将 DMG 中的 `HomeLink.app` 拖入目标 Mac 的“应用程序”即可安装；当前最低系统版本为 macOS 27。
+脚本生成 Release Apple Silicon（arm64）测试包，位于 `Distribution/`，包含 DMG、ZIP、安装说明和 SHA-256 校验文件。开发与打包均只支持 arm64，不包含 Intel 版本。打包不停止正在运行的开发版。将 DMG 中的 `HomeLink.app` 拖入目标 Mac 的“应用程序”即可安装；当前最低系统版本为 macOS 26。
 
 默认保留固定本机开发签名，尚未完成 Developer ID 分发签名和苹果公证。目标 Mac 首次启动可能被系统拦截：确认来源可信后，先尝试打开应用，再到“系统设置 → 隐私与安全性”选择 HomeLink 对应的“仍要打开”，自行确认。受管理的电脑可能不允许此操作，详见 [苹果操作说明](https://support.apple.com/zh-cn/102445)。安装包内也附带这份指引。
 
@@ -77,7 +77,9 @@ SSH 隧道只监听 `127.0.0.1`，不直接将屏幕共享对外公开。点击�
 
 ## 验证范围
 
-连接使用系统 `/usr/bin/ssh`，直接传入保存的域名，由 OpenSSH 解析；不自行替换 Fake-IP，也不读取终端的 SSH 配置或 agent。网络与握手超时 30 秒，整体启动等待上限 45 秒。失败提示区的「查看连接日志…」可定位本次日志，包含网络、握手、公钥认证和转发信息。日志只保留最近 128 KiB，权限 600，不记录私钥内容；可能包含地址、用户名及公钥指纹，分享前请检查。
+连接使用系统 `/usr/bin/ssh`，直接传入保存的域名，由 OpenSSH 解析；不自行替换 Fake-IP，也不读取终端的 SSH 配置或 agent。网络与握手超时 30 秒，整体启动等待上限 45 秒。失败提示区的「查看连接日志」可定位本次日志，包含网络、握手、公钥认证和转发信息。日志只保留最近 128 KiB，权限 600，不记录私钥内容；可能包含地址、用户名及公钥指纹，分享前请检查。
+
+1.0.1 已将最低部署版本降为 macOS 26，Debug 和 Release 均通过面向 26 的编译与安装包检查。当前验证机器运行 macOS 27，macOS 26 上的首次启动、钥匙串、登录启动和远程连接仍需实机回归。
 
 已通过本机编译、启动、添加表单检查和以下可重复检查：
 
