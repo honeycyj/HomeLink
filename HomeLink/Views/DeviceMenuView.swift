@@ -134,7 +134,10 @@ struct DeviceMenuView: View {
     }
 
     private func select(_ device: RemoteDevice) {
-        if store.activeID == device.id { return }
+        if store.activeID == device.id {
+            if store.localPort != nil { store.openScreenSharing() }
+            return
+        }
         if !device.hasConnected {
             store.setupDeviceID = device.id
             show("add-device")
@@ -237,7 +240,7 @@ private struct DeviceRow<Actions: View>: View {
 
     private var status: String {
         if isConnecting { return "正在连接" }
-        if isActive { return "已连接" }
+        if isActive { return "已连接 · 点击打开桌面" }
         if !device.hasConnected { return "待授权 · 点击继续设置" }
         return "未连接 · 点击连接"
     }

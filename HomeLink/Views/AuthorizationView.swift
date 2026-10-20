@@ -5,32 +5,51 @@ struct AuthorizationView: View {
     let device: RemoteDevice
     @Environment(\.dismissWindow) private var dismissWindow
     @State private var switchConfirmation = false
+    @State private var showingPublicKey = false
+
+    private var connectingThisDevice: Bool {
+        if case .connecting(let current) = store.connection.state { return current.id == device.id }
+        return false
+    }
+
+    private var cancellingThisDevice: Bool {
+        if case .disconnecting(let current) = store.connection.state { return current?.id == device.id }
+        return false
+    }
+
+    private var secondaryTitle: String {
+        if cancellingThisDevice { return "正在取消" }
+        return connectingThisDevice ? "取消连接" : "稍后设置"
+    }
+
+    private var connectTitle: String {
+        if cancellingThisDevice { return "正在取消" }
+        return connectingThisDevice ? "正在连接" : "已授权，连接"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("让 Studio 允许连接").font(.system(size: 18, weight: .semibold))
-                Text("复制公钥，在 Studio 完成一次设置，以后直接连接。")
+                Text("让 \(device.name) 允许连接").font(.system(size: 18, weight: .semibold))
+                Text("在这台远程 Mac 完成一次授权，以后直接连接。")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
-            PublicKeyCard(publicKey: device.publicKey, title: "这台笔记本的公钥")
             VStack(alignment: .leading, spacing: 8) {
-                Text("1. 在 Studio 开启共享").fontWeight(.medium)
+                Text("1. 在远程 Mac 开启共享").fontWeight(.medium)
                 Text("系统设置 → 通用 → 共享，开启「远程登录」与「屏幕共享」，仅允许你的账户访问。")
                     .foregroundStyle(.secondary)
-                Text("2. 在 Studio 粘贴公钥").fontWeight(.medium).padding(.top, 4)
-                Text("以 \(device.username) 用户登录 Studio，在终端执行一次授权命令。已经授权过可直接连接。")
+                Text("2. 复制并执行授权命令").fontWeight(.medium).padding(.top, 4)
+                Text("以 \(device.username) 用户登录这台远程 Mac，在终端粘贴并执行下面的命令。已经授权过可直接连接。")
                     .foregroundStyle(.secondary)
 
             }
             .font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("安全建议").fontWeight(.medium)
-                Text("仅允许指定账户访问。确认密钥可以登录后，建议关闭 SSH 密码登录、交互式认证与 root 登录。授权命令已附上配置说明，不会自动修改现有 SSH 设置。")
-                    .foregroundStyle(.secondary)
+            AuthorizationCommandCard(publicKey: device.publicKey, explanation: nil, prominent: true)
+            DisclosureGroup("单独查看或复制公钥", isExpanded: $showingPublicKey) {
+                PublicKeyCard(publicKey: device.publicKey, title: "本机公钥")
+                    .padding(.top, 6)
             }
-            .font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
-            AuthorizationCommandCard(publicKey: device.publicKey, explanation: nil)
+            .font(.system(size: 12))
             Text("命令可重复执行并保留已有公钥。网络入口仍需提前配置，不要将屏幕共享的 5900 端口直接暴露到公网。")
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let error = store.errorMessage {
@@ -40,10 +59,15 @@ struct AuthorizationView: View {
             }
             Divider()
             HStack {
-                Button("稍后设置") { dismissWindow(id: "add-device") }.keyboardShortcut(.cancelAction)
+                Button(secondaryTitle) {
+                    if connectingThisDevice { store.disconnect() }
+                    else { dismissWindow(id: "add-device") }
+                }
+                .keyboardShortcut(.cancelAction)
+                .disabled(cancellingThisDevice)
                 Spacer()
-                if store.isConnecting { ProgressView().controlSize(.small) }
-                Button(store.isConnecting ? "正在连接" : "已授权，连接") {
+                if connectingThisDevice || cancellingThisDevice { ProgressView().controlSize(.small) }
+                Button(connectTitle) {
                     if store.activeID != nil && store.activeID != device.id { switchConfirmation = true }
                     else { connect() }
                 }
