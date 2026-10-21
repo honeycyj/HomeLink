@@ -4,12 +4,14 @@ import AppKit
 @MainActor
 final class HomeLinkAppDelegate: NSObject, NSApplicationDelegate {
     weak var store: DeviceStore?
+    weak var ddns: DDNSStore?
     private var terminating = false
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !terminating else { return .terminateLater }
         terminating = true
         Task {
+            await ddns?.shutdown()
             await store?.shutdown()
             sender.reply(toApplicationShouldTerminate: true)
         }

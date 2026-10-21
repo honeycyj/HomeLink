@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import LocalAuthentication
 
 // Run only through script/test_keychain_signing.sh. Uses a disposable item, never a device key.
 let service = "local.homelink.HomeLink.signing-probe"
@@ -13,7 +14,9 @@ if action == "create" {
     query[kSecValueData as String] = Data(account.utf8)
     status = SecItemAdd(query as CFDictionary, nil)
 } else {
-    query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
+    let context = LAContext()
+    context.interactionNotAllowed = true
+    query[kSecUseAuthenticationContext as String] = context
     if action == "delete" { status = SecItemDelete(query as CFDictionary) }
     else {
         query[kSecReturnData as String] = true

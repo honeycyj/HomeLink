@@ -3,7 +3,6 @@ import SwiftUI
 struct AuthorizationCommandCard: View {
     let publicKey: String
     var explanation: String? = "连接中也可以复制。在其他 Mac 的目标账户终端执行一次；添加那台 Mac 时选择复用此公钥。"
-    var prominent = false
     @State private var expanded = false
 
     var body: some View {
@@ -12,11 +11,7 @@ struct AuthorizationCommandCard: View {
             if let explanation {
                 Text(explanation).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            if prominent {
-                copyButton.buttonStyle(.borderedProminent)
-            } else {
-                copyButton
-            }
+            copyButton
             DisclosureGroup("查看命令与安全说明", isExpanded: $expanded) {
                 ScrollView {
                     Text(AuthorizationCommand.make(publicKey: publicKey))

@@ -3,6 +3,7 @@ import SwiftUI
 struct SetupView: View {
     @Bindable var store: DeviceStore
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openSettings) private var openSettings
     @State private var name = ""
     @State private var address = ""
     @State private var username = ""
@@ -20,7 +21,9 @@ struct SetupView: View {
                 form
             }
         }
-        .tint(.accentColor)
+        .buttonStyle(SecondaryActionButtonStyle())
+        .controlSize(.regular)
+        .buttonBorderShape(.roundedRectangle)
         .alert("无法添加设备", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好", role: .cancel) { error = nil }
         } message: { Text(error ?? "") }
@@ -36,11 +39,8 @@ struct SetupView: View {
 
             Form {
                 TextField("名称", text: $name, prompt: Text("家庭 Mac Studio"))
-                TextField("地址", text: $address, prompt: Text("home.example.com:2222"))
+                TextField("地址", text: $address, prompt: Text("home.example.com"))
                 TextField("用户名", text: $username, prompt: Text("studio"))
-                SecureField("密码（可选）", text: .constant(""), prompt: Text("公钥连接无需填写"))
-                    .disabled(true)
-                    .help("默认使用公钥授权。备用密码登录暂未启用，密码不会收集或保存。")
                 DisclosureGroup("高级选项", isExpanded: $advanced) {
                     TextField("SSH 端口", text: $port)
                         .help("22 是 SSH 标准默认端口；公网映射使用其他端口时请修改。地址中包含的端口优先于此设置。")
@@ -66,6 +66,14 @@ struct SetupView: View {
                 Text("公网访问需先配置家庭网络入口。端口可填写在地址中，或在高级选项中修改。")
             }
             .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+
+            if store.devices.isEmpty {
+                Button("想让其他 Mac 连接本机？设置本机访问") {
+                    store.preferencesPage = .localAccess
+                    openSettings()
+                    dismissWindow(id: "add-device")
+                }.font(.system(size: 12))
+            }
 
             Divider()
             HStack {

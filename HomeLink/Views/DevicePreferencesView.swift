@@ -1,7 +1,8 @@
 import SwiftUI
 
-struct PreferencesView: View {
+struct DevicePreferencesView: View {
     @Bindable var store: DeviceStore
+    let onBack: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var address = ""
@@ -13,44 +14,44 @@ struct PreferencesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("HomeLink 设置").font(.system(size: 18, weight: .semibold))
-            VStack(alignment: .leading, spacing: 12) {
-                Toggle("登录时启动 HomeLink", isOn: Binding(
-                    get: { store.launchAtLogin }, set: { store.setLaunchAtLogin($0) }))
-                Toggle("连接中断时通知我", isOn: Binding(
-                    get: { store.notificationsEnabled }, set: { value in
-                        Task { await store.setNotifications(value) }
-                    }))
+            SettingsHeading(title: "设备设置") {
+                guard !saving else { return }
+                saving = true
+                Task {
+                    defer { saving = false }
+                    do { try await save(); onBack() } catch { self.error = error.localizedDescription }
+                }
             }
-            .toggleStyle(.checkbox)
-            .font(.system(size: 13))
-            Divider()
-            if let selected {
-                Picker("设备", selection: Binding(get: { selected.id }, set: switchDevice)) {
-                    ForEach(store.devices) { Text($0.name).tag($0.id) }
-                }
-                .pickerStyle(.menu).disabled(saving)
-
-                Form {
-                    TextField("名称", text: $name)
-                    TextField("地址", text: $address)
-                    TextField("用户名", text: $username)
-                }
-                .formStyle(.columns).textFieldStyle(.roundedBorder)
-                .disabled(saving || store.activeID == selected.id)
-                if store.activeID == selected.id {
-                    Text("断开连接后可修改设备信息。")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-                PublicKeyCard(publicKey: selected.publicKey).id(selected.id)
-                AuthorizationCommandCard(publicKey: selected.publicKey).id(selected.id)
-            } else {
-                Text("尚未添加设备。添加后，可以在这里修改连接信息并复制公钥。")
-                    .font(.system(size: 12)).foregroundStyle(.secondary).padding(.vertical, 12)
-            }
-            if let message = store.errorMessage {
-                Text(message).font(.system(size: 12)).foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let selected {
+                        Picker("设备", selection: Binding(get: { selected.id }, set: switchDevice)) {
+                            ForEach(store.devices) { Text($0.name).tag($0.id) }
+                        }
+                        .pickerStyle(.menu).disabled(saving)
+        
+                        Form {
+                            TextField("名称", text: $name)
+                            TextField("地址", text: $address)
+                            TextField("用户名", text: $username)
+                        }
+                        .formStyle(.columns).textFieldStyle(.roundedBorder)
+                        .disabled(saving || store.activeID == selected.id)
+                        if store.activeID == selected.id {
+                            Text("断开连接后可修改设备信息。")
+                                .font(.system(size: 11)).foregroundStyle(.secondary)
+                        }
+                        PublicKeyCard(publicKey: selected.publicKey).id(selected.id)
+                        AuthorizationCommandCard(publicKey: selected.publicKey).id(selected.id)
+                    } else {
+                        Text("尚未添加设备。添加后，可以在这里修改连接信息并复制公钥。")
+                            .font(.system(size: 12)).foregroundStyle(.secondary).padding(.vertical, 12)
+                    }
+                    if let message = store.errorMessage {
+                        Text(message).font(.system(size: 12)).foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }.padding(.vertical, 1)
             }
             Divider()
             HStack {
@@ -63,11 +64,12 @@ struct PreferencesView: View {
                         catch { self.error = error.localizedDescription }
                     }
                 }
+                .buttonBorderShape(.capsule).controlSize(.large)
                 .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(saving || store.isLoading)
             }
         }
-        .padding(24).frame(width: 520)
-        .tint(.accentColor)
+        .padding(24)
+        .buttonBorderShape(.roundedRectangle)
         .onAppear {
             if selected == nil { store.settingsDeviceID = store.devices.first?.id }
             load()

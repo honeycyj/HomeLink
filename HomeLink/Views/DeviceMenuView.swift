@@ -52,8 +52,8 @@ struct DeviceMenuView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("暂时无法完成操作").fontWeight(.medium)
                     Text(error).foregroundStyle(.secondary).textSelection(.enabled)
-                    Button("查看连接日志") { store.openConnectionLog() }
-                    Button("知道了") { store.errorMessage = nil }
+                    Button("查看连接日志") { store.openConnectionLog() }.buttonStyle(SecondaryActionButtonStyle())
+                    Button("知道了") { store.errorMessage = nil }.buttonStyle(SecondaryActionButtonStyle())
                 }
                 .font(.system(size: 12))
                 .padding(12)
@@ -69,6 +69,7 @@ struct DeviceMenuView: View {
                 show("add-device")
             }.disabled(store.isLoading)
             menuAction("设置") {
+                store.preferencesPage = .overview
                 store.settingsDeviceID = store.settingsDeviceID ?? store.devices.first?.id
                 NSApp.activate(ignoringOtherApps: true)
                 openSettings()
@@ -115,7 +116,7 @@ struct DeviceMenuView: View {
     }
 
     private func deviceRow(_ device: RemoteDevice) -> some View {
-        DeviceRow(device: device, isActive: store.activeID == device.id,
+        DeviceMenuRow(device: device, isActive: store.activeID == device.id,
                   isConnecting: store.activeID == device.id && store.isConnecting,
                   action: { select(device) }) {
             if store.activeID == device.id {
@@ -124,6 +125,7 @@ struct DeviceMenuView: View {
                 Button(device.hasConnected ? "连接" : "继续设置") { select(device) }
             }
             Button("设备设置") {
+                store.preferencesPage = .connection
                 store.settingsDeviceID = device.id
                 NSApp.activate(ignoringOtherApps: true)
                 openSettings()
@@ -174,87 +176,5 @@ struct DeviceMenuView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(MenuRowButtonStyle())
-    }
-}
-
-private struct DeviceRow<Actions: View>: View {
-    let device: RemoteDevice
-    let isActive: Bool
-    let isConnecting: Bool
-    let action: () -> Void
-    @ViewBuilder var actions: () -> Actions
-    @State private var hovering = false
-    @State private var hoveringActions = false
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: action) {
-                HStack(spacing: 12) {
-                    Image(systemName: "desktopcomputer")
-                        .font(.system(size: 16, weight: .medium))
-                        .symbolRenderingMode(.monochrome)
-                        .foregroundStyle(isConnected ? Color.white : iconColor)
-                        .frame(width: 32, height: 32)
-                        .background(isConnected ? Color.accentColor : iconBackground, in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(String(device.name.prefix(30)))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(hovering ? Color.white : Color.primary)
-                            .lineLimit(1)
-                        Text(status).font(.system(size: 11))
-                            .foregroundStyle(hovering ? Color.white.opacity(0.8) : Color.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(device.name)，\(status)")
-            if isConnecting {
-                ProgressView().controlSize(.mini).tint(hovering ? .white : .secondary)
-            }
-            Menu(content: actions) {
-                Image(systemName: "ellipsis").font(.system(size: 15))
-                    .foregroundStyle(.white.opacity(hoveringActions || hovering ? 1 : 0.55))
-                    .frame(width: 28, height: 28).contentShape(Rectangle())
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .tint(.white)
-            .fixedSize()
-            .onHover { hoveringActions = $0 }
-            .help("\(device.name) 的操作")
-            .accessibilityLabel("\(device.name) 的更多操作")
-        }
-        .padding(.horizontal, 10)
-        .frame(height: 52)
-        .background(hovering ? Color.accentColor : .clear,
-                    in: RoundedRectangle(cornerRadius: 6))
-        .onHover { hovering = $0 }
-    }
-
-    private var isConnected: Bool { isActive && !isConnecting }
-    private var iconColor: Color { hovering ? .white.opacity(0.8) : .secondary }
-    private var iconBackground: Color { hovering ? .white.opacity(0.16) : .primary.opacity(0.12) }
-
-    private var status: String {
-        if isConnecting { return "正在连接" }
-        if isActive { return "已连接 · 点击打开桌面" }
-        if !device.hasConnected { return "待授权 · 点击继续设置" }
-        return "未连接 · 点击连接"
-    }
-}
-
-private struct MenuRowButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-    @State private var hovering = false
-    func makeBody(configuration: Configuration) -> some View {
-        let highlighted = isEnabled && (hovering || configuration.isPressed)
-        configuration.label
-            .foregroundStyle(isEnabled ? (highlighted ? Color.white : Color.primary) : Color.secondary)
-            .background(highlighted ? Color.accentColor : .clear,
-                        in: RoundedRectangle(cornerRadius: 6))
-            .onHover { hovering = $0 }
     }
 }

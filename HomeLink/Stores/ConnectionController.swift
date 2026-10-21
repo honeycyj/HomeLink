@@ -10,7 +10,6 @@ final class ConnectionController {
     @ObservationIgnored private let knownHosts: URL
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var request = UUID()
-    var onUnexpectedDisconnect: ((RemoteDevice) -> Void)?
 
     init(transport: (any SSHTransport)? = nil, knownHosts: URL) {
         self.transport = transport ?? SSHConnection()
@@ -34,7 +33,6 @@ final class ConnectionController {
                 let port = try await self.transport.connect(to: device, knownHosts: self.knownHosts) { [weak self] message in
                     guard let self, self.request == token else { return }
                     self.state = .failed(device, message: message)
-                    self.onUnexpectedDisconnect?(device)
                 }
                 try Task.checkCancellation()
                 guard self.request == token, case .connecting = self.state else { return }

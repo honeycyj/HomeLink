@@ -1,7 +1,6 @@
 import AppKit
 import Observation
 import ServiceManagement
-import UserNotifications
 
 @MainActor
 @Observable
@@ -13,8 +12,24 @@ final class DeviceStore {
     private var modifyingDevices: Set<UUID> = []
     var setupDeviceID: UUID?
     var settingsDeviceID: UUID?
-    var notificationsEnabled = UserDefaults.standard.bool(forKey: "connectionNotifications")
-    var launchAtLogin = SMAppService.mainApp.status == .enabled
+    var preferencesPage = PreferencesPage.overview
+    private(set) var launchAtLoginStatus = SMAppService.mainApp.status
+    private(set) var launchAtLoginError: String?
+    var launchAtLogin: Bool { launchAtLoginStatus == .enabled }
+    var launchAtLoginNeedsApproval: Bool { launchAtLoginStatus == .requiresApproval }
+    var launchAtLoginDescription: String {
+        switch launchAtLoginStatus {
+        case .enabled: "已开启，登录这台 Mac 后自动运行。"
+        case .requiresApproval: "等待系统批准，请在登录项中允许 HomeLink。"
+        case .notRegistered: "登录后自动运行，方便连接与 DDNS 更新。"
+        case .notFound: "系统未找到有效登录项，请将应用安装到应用程序后重试。"
+        @unknown default: "无法确认登录项状态，请在系统设置中查看。"
+        }
+    }
+    func refreshLaunchAtLogin() {
+        launchAtLoginStatus = SMAppService.mainApp.status
+        if launchAtLogin { launchAtLoginError = nil }
+    }
 
     var devices: [RemoteDevice] { repository.devices }
     var activeID: UUID? { connection.state.activeDevice?.id }
@@ -30,11 +45,10 @@ final class DeviceStore {
     private var directory: URL { repository.directory }
 
     init(directory: URL? = nil, transport: (any SSHTransport)? = nil, cleanupTemporaryKeys: Bool = false) {
-        let directory = directory ?? URL.applicationSupportDirectory.appendingPathComponent("HomeLink", isDirectory: true)
+        let directory = directory ?? HomeLinkStorage.directory
         repository = DeviceRepository(directory: directory)
         connection = ConnectionController(transport: transport ?? SSHConnection(),
                                           knownHosts: directory.appendingPathComponent("known_hosts"))
-        connection.onUnexpectedDisconnect = { [weak self] device in self?.notifyDisconnect(device.name) }
         startup = Task { [weak self] in
             if cleanupTemporaryKeys { await KeyStore.cleanupAbandonedTemporaryKeys() }
             await self?.repository.load()
@@ -118,14 +132,15 @@ final class DeviceStore {
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLoginError = nil
         do {
             if enabled { try SMAppService.mainApp.register() }
             else { try SMAppService.mainApp.unregister() }
-            launchAtLogin = SMAppService.mainApp.status == .enabled
-            if enabled && SMAppService.mainApp.status == .requiresApproval {
-                errorMessage = "请在系统设置 → 通用 → 登录项中允许 HomeLink 启动。"
-            }
-        } catch { errorMessage = "无法修改登录启动设置：\(error.localizedDescription)" }
+            refreshLaunchAtLogin()
+        } catch {
+            refreshLaunchAtLogin()
+            launchAtLoginError = "无法修改登录启动设置：\(error.localizedDescription)"
+        }
     }
 
     func openConnectionLog() {
@@ -136,22 +151,4 @@ final class DeviceStore {
         }
     }
 
-    func setNotifications(_ enabled: Bool) async {
-        do {
-            let allowed = enabled ? try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .sound]) : false
-            notificationsEnabled = allowed
-            UserDefaults.standard.set(allowed, forKey: "connectionNotifications")
-            if enabled && !allowed { errorMessage = "系统未允许通知，可在系统设置中为 HomeLink 开启。" }
-        } catch { errorMessage = error.localizedDescription }
-    }
-
-    private func notifyDisconnect(_ name: String) {
-        guard notificationsEnabled else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "\(name) 连接已断开"
-        content.body = "点开 HomeLink 菜单栏，可以重新连接。"
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
-    }
 }

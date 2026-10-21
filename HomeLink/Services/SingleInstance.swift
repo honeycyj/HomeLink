@@ -7,7 +7,7 @@ enum SingleInstance {
     private static var descriptor: Int32 = -1
 
     static func acquire() {
-        let directory = URL.applicationSupportDirectory.appending(path: "HomeLink", directoryHint: .isDirectory)
+        let directory = HomeLinkStorage.directory
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
                                                     attributes: [.posixPermissions: 0o700])
